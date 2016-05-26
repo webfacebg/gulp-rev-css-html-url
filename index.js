@@ -4,7 +4,7 @@ var gutil = require('gulp-util');
 var path = require('path');
 
 module.exports = function override() {
-    var allowedPathRegExp = /\.(css|js)$/;
+    var allowedPathRegExp = /\.(css|js|html)$/;
 
     function md5(str) {
         return crypto.createHash('md5').update(str, 'utf8').digest('hex');

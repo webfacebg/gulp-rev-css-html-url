@@ -6,7 +6,7 @@ var override = require('./index');
 var expect = require('chai').expect;
 var through = require('through2');
 
-describe('gulp-rev-css-url', function () {
+describe('gulp-rev-css-html-url', function () {
     beforeEach(function (done) {
         fse.remove('./results', done);
     })
