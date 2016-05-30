@@ -64,10 +64,12 @@ module.exports = function override() {
                 file.contents = new Buffer(contents);
 
                 // update file's hash as it does in gulp-rev plugin
-                var hash = file.revHash = md5(contents).slice(0, 10);
+                var hash = file.revHash;
+                file.revHash = md5(contents).slice(0, 10);
                 var ext = path.extname(file.path);
-                var filename = path.basename(file.revOrigPath, ext) + '-' + hash + ext;
+                var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
                 file.path = path.join(path.dirname(file.path), filename);
+                _f.hashedPath = _f.hashedPath.replace(hash, file.revHash);
 
             }
             self.push(file);
