@@ -26,13 +26,11 @@ module.exports = function override() {
 
     return through.obj(function (file, enc, cb) {
         var firstFile = null;
-
         if (file.path && file.revOrigPath) {
             firstFile = firstFile || file;
-            var _relPath = relPath(path.resolve(firstFile.revOrigBase), file.revOrigPath);
 
             f.push({
-                origPath: _relPath,
+                origPath: relPath(path.resolve(firstFile.revOrigBase), file.revOrigPath),
                 hashedPath: relPath(path.resolve(firstFile.base), file.path),
                 file: file
             });
@@ -47,6 +45,8 @@ module.exports = function override() {
             if(a.origPath.length < b.origPath.length) return 1;
             return 0;
         });
+	var dependencyMap = {};
+	var timesInRecursion = {};
 
         f.forEach(function (_f) {
             var file = _f.file;
@@ -57,23 +57,77 @@ module.exports = function override() {
                     var origPath = __f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
                     var hashedPath = __f.hashedPath.replace(new RegExp('\\' + path.sep, 'g'), '/');
                     contents = contents.replace(
-                        new RegExp(origPath, 'g'),
-                        hashedPath);
+                        new RegExp(origPath, 'g'), function (result) {
+			    if (!dependencyMap[__f.origPath]) {
+				dependencyMap[__f.origPath] = {};
+			    }
+			    // Do not replace yet. Just build the map.
+			    // dependency : dependent : true just to keep it as an Object (if someone includes the same file twice)
+			    dependencyMap[__f.origPath][_f.origPath] = true;
+                            return result;
+			});
                 });
-
-                file.contents = new Buffer(contents);
-
-                // update file's hash as it does in gulp-rev plugin
-                var hash = file.revHash;
-                file.revHash = md5(contents).slice(0, 10);
-                var ext = path.extname(file.path);
-                var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
-                file.path = path.join(path.dirname(file.path), filename);
-                _f.hashedPath = _f.hashedPath.replace(hash, file.revHash);
-
-            }
+		// 
+	    }
             self.push(file);
         });
+	function replaceStringsFor(target) {
+	    // Check if target is a dependent
+	    if (dependencyMap[target]) {
+		for (var dependency in dependencyMap[target]) {
+		    // Target to be recalculated
+		    if (typeof timesInRecursion[dependency + "==" + target] == "undefined") {
+			timesInRecursion[dependency + "==" + target] = 0;
+		    }
+		    // Check if dependecy loop
+		    if (timesInRecursion[dependency + "==" + target] < 100) {
+			    timesInRecursion[dependency + "==" + target] = parseInt(timesInRecursion[dependency + "==" + target]) + 1;
+			    replaceStringsFor(dependency);
+			} else {
+			    console.log("Too deep recursion in dependencies for: [ " + dependency + " ] included in: [ " + target + " ]");
+			    delete(dependencyMap[target][dependency]);
+			}
+		}
+	    }
+
+	    // First find the file in the array
+	    for (var i = 0; i < f.length; i++) {
+		// File ref found!
+	    	if (f[i].origPath == target) {
+		    // Do the MD5 rock.
+	    	    var file = f[i].file;
+	    	    if ((allowedPathRegExp.test(file.revOrigPath) ) && file.contents) {
+	    	    	var contents = file.contents.toString();
+	    	    	longestFirst.forEach(function (_f) {
+	    	    	    var origPath = _f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
+	    	    	    var hashedPath = _f.hashedPath.replace(new RegExp('\\' + path.sep, 'g'), '/');
+	    	    	    contents = contents.replace(
+	    	    		new RegExp(origPath, 'g'), function (result) {
+	    	    		    return hashedPath;
+	    	    		});
+	    	    	});
+
+			// update file's hash as it does in gulp-rev plugin
+	    		file.contents = new Buffer(contents);
+			// First keep the old hash
+	    		var hash = file.revHash;
+			// Calculate the new one after the replace
+	    		file.revHash = md5(contents).slice(0, 10);
+	    	    	var ext = path.extname(file.path);
+	    	    	var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
+	    	    	file.path = path.join(path.dirname(file.path), filename);
+	    	    	f[i].hashedPath = f[i].hashedPath.replace(hash, file.revHash);
+	    	    }
+		    // If found, no need to continue the loop.
+	    	    break;
+		}
+	    };
+	};
+	    // Fix hashes
+	for (var dependent in dependencyMap) {
+	    replaceStringsFor(dependent);
+	}
+	console.log(dependencyMap);
         cb();
     });
 };
