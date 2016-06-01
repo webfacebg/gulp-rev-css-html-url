@@ -69,7 +69,6 @@ module.exports = function override() {
                 });
 		// 
 	    }
-            self.push(file);
         });
 	function replaceStringsFor(target) {
 	    // Check if target is a dependent
@@ -127,7 +126,11 @@ module.exports = function override() {
 	for (var dependent in dependencyMap) {
 	    replaceStringsFor(dependent);
 	}
-	console.log(dependencyMap);
+	// Push to outout
+        f.forEach(function (_f) {
+            var file = _f.file;
+            self.push(file);
+        });
         cb();
     });
 };
