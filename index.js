@@ -55,19 +55,15 @@ module.exports = function override() {
                 var contents = file.contents.toString();
                 longestFirst.forEach(function (__f) {
                     var origPath = __f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
-                    var hashedPath = __f.hashedPath.replace(new RegExp('\\' + path.sep, 'g'), '/');
-                    contents = contents.replace(
-                        new RegExp(origPath, 'g'), function (result) {
-			    if (!dependencyMap[__f.origPath]) {
-				dependencyMap[__f.origPath] = {};
-			    }
-			    // Do not replace yet. Just build the map.
-			    // dependency : dependent : true just to keep it as an Object (if someone includes the same file twice)
-			    dependencyMap[__f.origPath][_f.origPath] = true;
-                            return result;
-			});
+                    var dependencyFound = contents.match(new RegExp(origPath, 'g'));
+                    // Build the dependecy map
+                    if (dependencyFound) {
+			if (!dependencyMap[__f.origPath]) {
+			    dependencyMap[__f.origPath] = {};
+			}
+			dependencyMap[__f.origPath][_f.origPath] = true;
+                    }
                 });
-		// 
 	    }
         });
 	function replaceStringsFor(target) {
