@@ -67,24 +67,6 @@ module.exports = function override() {
 	    }
         });
 	function replaceStringsFor(target) {
-	    // Check if target is a dependent
-	    if (dependencyMap[target]) {
-		for (var dependency in dependencyMap[target]) {
-		    // Target to be recalculated
-		    if (typeof timesInRecursion[dependency + "==" + target] == "undefined") {
-			timesInRecursion[dependency + "==" + target] = 0;
-		    }
-		    // Check if dependecy loop
-		    if (timesInRecursion[dependency + "==" + target] < 100) {
-			    timesInRecursion[dependency + "==" + target] = parseInt(timesInRecursion[dependency + "==" + target]) + 1;
-			    replaceStringsFor(dependency);
-			} else {
-			    console.log("Too deep recursion in dependencies for: [ " + dependency + " ] included in: [ " + target + " ]");
-			    delete(dependencyMap[target][dependency]);
-			}
-		}
-	    }
-
 	    // First find the file in the array
 	    for (var i = 0; i < f.length; i++) {
 		// File ref found!
@@ -117,6 +99,23 @@ module.exports = function override() {
 	    	    break;
 		}
 	    };
+	    // Check if target is a dependent
+	    if (dependencyMap[target]) {
+		for (var dependency in dependencyMap[target]) {
+		    // Target to be recalculated
+		    if (typeof timesInRecursion[dependency + "==" + target] == "undefined") {
+			timesInRecursion[dependency + "==" + target] = 0;
+		    }
+		    // Check if dependecy loop
+		    if (timesInRecursion[dependency + "==" + target] < 100) {
+			    timesInRecursion[dependency + "==" + target] = parseInt(timesInRecursion[dependency + "==" + target]) + 1;
+			    replaceStringsFor(dependency);
+			} else {
+			    console.log("Too deep recursion in dependencies for: [ " + dependency + " ] included in: [ " + target + " ]");
+			    delete(dependencyMap[target][dependency]);
+			}
+		}
+	    }
 	};
 	    // Fix hashes
 	for (var dependent in dependencyMap) {
