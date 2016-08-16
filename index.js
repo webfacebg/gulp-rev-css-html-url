@@ -75,14 +75,6 @@ module.exports = function override() {
 	    	    var file = f[i].file;
 	    	    if ((allowedPathRegExp.test(file.revOrigPath) ) && file.contents) {
 	    	    	var contents = file.contents.toString();
-	    	    	longestFirst.forEach(function (_f) {
-	    	    	    var origPath = _f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
-	    	    	    var hashedPath = _f.hashedPath.replace(new RegExp('\\' + path.sep, 'g'), '/');
-	    	    	    contents = contents.replace(
-	    	    		new RegExp(origPath, 'g'), function (result) {
-	    	    		    return hashedPath;
-	    	    		});
-	    	    	});
 
 			// update file's hash as it does in gulp-rev plugin
 	    		file.contents = new Buffer(contents);
@@ -94,6 +86,15 @@ module.exports = function override() {
 	    	    	var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
 	    	    	file.path = path.join(path.dirname(file.path), filename);
 	    	    	f[i].hashedPath = f[i].hashedPath.replace(hash, file.revHash);
+
+	    	    	longestFirst.forEach(function (_f) {
+	    	    	    var origPath = _f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
+	    	    	    var hashedPath = _f.hashedPath.replace(new RegExp('\\' + path.sep, 'g'), '/');
+	    	    	    contents = contents.replace(
+	    	    		new RegExp(origPath, 'g'), function (result) {
+	    	    		    return hashedPath;
+	    	    		});
+	    	    	});
 	    	    }
 		    // If found, no need to continue the loop.
 	    	    break;
