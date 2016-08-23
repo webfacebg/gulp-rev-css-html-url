@@ -47,82 +47,83 @@ module.exports = function override() {
         });
 	var dependencyMap = {};
 	var timesInRecursion = {};
-
         f.forEach(function (_f) {
             var file = _f.file;
-
             if ((allowedPathRegExp.test(file.revOrigPath) ) && file.contents) {
                 var contents = file.contents.toString();
-                longestFirst.forEach(function (__f) {
+                f.forEach(function (__f) {
                     var origPath = __f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
                     var dependencyFound = contents.match(new RegExp(origPath, 'g'));
                     // Build the dependecy map
                     if (dependencyFound) {
-			if (!dependencyMap[__f.origPath]) {
-			    dependencyMap[__f.origPath] = {};
+			if (!dependencyMap[_f.origPath]) {
+			    dependencyMap[_f.origPath] = {};
 			}
-			dependencyMap[__f.origPath][_f.origPath] = true;
+			dependencyMap[_f.origPath][__f.origPath] = true;
                     }
                 });
 	    }
         });
-	function replaceStringsFor(dependency) {
-	    // check if dependency is a dependent
-	    if (dependencyMap[dependency]) {
-		for (var target in dependencyMap[dependency]) {
-		    // Target to be recalculated
-		    if (typeof timesInRecursion[dependency + "==" + target] == "undefined") {
-			timesInRecursion[dependency + "==" + target] = 0;
-		    }
-		    // Check if dependecy loop
-		    if (timesInRecursion[dependency + "==" + target] < 100) {
-			timesInRecursion[dependency + "==" + target] = parseInt(timesInRecursion[dependency + "==" + target]) + 1;
-			replaceStringsFor(target);
-		    } else {
-			console.log("Too deep recursion in dependencies for: [ " + dependency + " ] included in: [ " + target + " ]");
-			delete(dependencyMap[dependency][target]);
-		    }
-		}
-	    } else {
-		// First find the file in the array
-		for (var i = 0; i < f.length; i++) {
-		    // File ref found!
-		    if (f[i].origPath == dependency) {
-			// Do the MD5 rock.
-			var file = f[i].file;
-			if ((allowedPathRegExp.test(file.revOrigPath) ) && file.contents) {
-			    var contents = file.contents.toString();
+        function replaceDependencies (dependent) {
+            // Replace dependencies first
+            if (dependencyMap[dependent]) {
+	        for (var dependency in dependencyMap[dependent]) {
+	    	    // Dependent to be recalculated
+	    	    if (typeof timesInRecursion[dependency + "==" + dependent] == "undefined") {
+	    	        timesInRecursion[dependency + "==" + dependent] = 0;
+	    	    }
+	    	    // Check if dependecy loop
+	    	    if (timesInRecursion[dependency + "==" + dependent] < 100) {
+	    	        timesInRecursion[dependency + "==" + dependent] = parseInt(timesInRecursion[dependency + "==" + dependent]) + 1;
+                        replaceDependencies(dependency);
+	    	    } else {
+	    	        console.log("Too deep recursion in dependencies for: [ " + dependency + " ] included in: [ " + dependent + " ]");
+	    	        delete(dependencyMap[dependency][dependent]);
+	    	    }
+                }
+            }
+            // Now just Replace
+	    // First find the file in the array
+	    for (var i = 0; i < f.length; i++) {
+		// File ref found!
+		if (f[i].origPath == dependent) {
+		    // Do the MD5 rock.
+		    var file = f[i].file;
+		    if ((allowedPathRegExp.test(file.revOrigPath) ) && file.contents) {
+			var contents = file.contents.toString();
 
-			    // First keep the old hash
-			    var hash = file.revHash;
-			    var ext = path.extname(file.path);
-			    var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
-			    file.path = path.join(path.dirname(file.path), filename);
-			    f[i].hashedPath = f[i].hashedPath.replace(hash, file.revHash);
+			// First keep the old hash
+			var hash = file.revHash;
+			var ext = path.extname(file.path);
+			var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
 
-			    longestFirst.forEach(function (_f) {
+			longestFirst.forEach(function (_f) {
+                            if (dependencyMap[f[i].origPath] && dependencyMap[f[i].origPath][_f.origPath]) {
 			        var origPath = _f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
 			        var hashedPath = _f.hashedPath.replace(new RegExp('\\' + path.sep, 'g'), '/');
-			        contents = contents.replace(
-			            new RegExp(origPath, 'g'), function (result) {
-			        	return hashedPath;
-			            });
-			    });
-			    // update file's hash as it does in gulp-rev plugin
-			    file.contents = new Buffer(contents);
-			    // Calculate the new one after the replace
-			    file.revHash = md5(contents).slice(0, 10);
-			}
-			// If found, no need to continue the loop.
-			break;
+			        var ext = path.extname(_f.origPath);
+			         contents = contents.replace(new RegExp(origPath, 'g'), hashedPath);
+                            }
+			});
+
+			file.path = path.join(path.dirname(file.path), filename);
+			// update file's hash as it does in gulp-rev plugin
+			file.contents = new Buffer(contents);
+			// Calculate the new one after the replace
+			file.revHash = md5(contents).slice(0, 10);
+			f[i].hashedPath = f[i].hashedPath.replace(hash, file.revHash); // replace the hash in the rev-manifest.json
+
 		    }
-		};
-	    }
-	};
-	// Fix hashes
-	for (var dependency in dependencyMap) {
-	    replaceStringsFor(dependency);
+		    // If found, no need to continue the loop.
+		    break;
+		}
+	    };
+        };
+	// fix hashes
+	for (var dependent in dependencyMap) {
+	    replaceDependencies(dependent);
 	}
+
 	// Push to outout
         f.forEach(function (_f) {
             var file = _f.file;
