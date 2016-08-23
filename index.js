@@ -93,9 +93,9 @@ module.exports = function override() {
 	    	    		    return hashedPath;
 	    	    		});
 	    	    	});
+			// update file's hash as it does in gulp-rev plugin
+	    		file.contents = new Buffer(contents);
 	    	    }
-		    // update file's hash as it does in gulp-rev plugin
-	    	    file.contents = new Buffer(contents);
 		    // If found, no need to continue the loop.
 	    	    break;
 		}
