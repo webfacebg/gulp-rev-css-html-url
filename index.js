@@ -76,8 +76,6 @@ module.exports = function override() {
 	    	    if ((allowedPathRegExp.test(file.revOrigPath) ) && file.contents) {
 	    	    	var contents = file.contents.toString();
 
-			// update file's hash as it does in gulp-rev plugin
-	    		file.contents = new Buffer(contents);
 			// First keep the old hash
 	    		var hash = file.revHash;
 			// Calculate the new one after the replace
@@ -96,6 +94,8 @@ module.exports = function override() {
 	    	    		});
 	    	    	});
 	    	    }
+		    // update file's hash as it does in gulp-rev plugin
+	    	    file.contents = new Buffer(contents);
 		    // If found, no need to continue the loop.
 	    	    break;
 		}
