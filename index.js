@@ -66,61 +66,62 @@ module.exports = function override() {
                 });
 	    }
         });
-	function replaceStringsFor(target) {
-	    // First find the file in the array
-	    for (var i = 0; i < f.length; i++) {
-		// File ref found!
-	    	if (f[i].origPath == target) {
-		    // Do the MD5 rock.
-	    	    var file = f[i].file;
-	    	    if ((allowedPathRegExp.test(file.revOrigPath) ) && file.contents) {
-	    	    	var contents = file.contents.toString();
-
-			// First keep the old hash
-	    		var hash = file.revHash;
-			// Calculate the new one after the replace
-	    		file.revHash = md5(contents).slice(0, 10);
-	    	    	var ext = path.extname(file.path);
-	    	    	var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
-	    	    	file.path = path.join(path.dirname(file.path), filename);
-	    	    	f[i].hashedPath = f[i].hashedPath.replace(hash, file.revHash);
-
-	    	    	longestFirst.forEach(function (_f) {
-	    	    	    var origPath = _f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
-	    	    	    var hashedPath = _f.hashedPath.replace(new RegExp('\\' + path.sep, 'g'), '/');
-	    	    	    contents = contents.replace(
-	    	    		new RegExp(origPath, 'g'), function (result) {
-	    	    		    return hashedPath;
-	    	    		});
-	    	    	});
-			// update file's hash as it does in gulp-rev plugin
-	    		file.contents = new Buffer(contents);
-	    	    }
-		    // If found, no need to continue the loop.
-	    	    break;
-		}
-	    };
-	    // Check if target is a dependent
-	    if (dependencyMap[target]) {
-		for (var dependency in dependencyMap[target]) {
+	function replaceStringsFor(dependency) {
+	    // check if dependency is a dependent
+	    if (dependencyMap[dependency]) {
+		for (var target in dependencyMap[dependency]) {
 		    // Target to be recalculated
 		    if (typeof timesInRecursion[dependency + "==" + target] == "undefined") {
 			timesInRecursion[dependency + "==" + target] = 0;
 		    }
 		    // Check if dependecy loop
 		    if (timesInRecursion[dependency + "==" + target] < 100) {
-			    timesInRecursion[dependency + "==" + target] = parseInt(timesInRecursion[dependency + "==" + target]) + 1;
-			    replaceStringsFor(dependency);
-			} else {
-			    console.log("Too deep recursion in dependencies for: [ " + dependency + " ] included in: [ " + target + " ]");
-			    delete(dependencyMap[target][dependency]);
-			}
+			timesInRecursion[dependency + "==" + target] = parseInt(timesInRecursion[dependency + "==" + target]) + 1;
+			replaceStringsFor(target);
+		    } else {
+			console.log("Too deep recursion in dependencies for: [ " + dependency + " ] included in: [ " + target + " ]");
+			delete(dependencyMap[dependency][target]);
+		    }
 		}
+	    } else {
+		// First find the file in the array
+		for (var i = 0; i < f.length; i++) {
+		    // File ref found!
+		    if (f[i].origPath == dependency) {
+			// Do the MD5 rock.
+			var file = f[i].file;
+			if ((allowedPathRegExp.test(file.revOrigPath) ) && file.contents) {
+			    var contents = file.contents.toString();
+
+			    // First keep the old hash
+			    var hash = file.revHash;
+			    var ext = path.extname(file.path);
+			    var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
+			    file.path = path.join(path.dirname(file.path), filename);
+			    f[i].hashedPath = f[i].hashedPath.replace(hash, file.revHash);
+
+			    longestFirst.forEach(function (_f) {
+			        var origPath = _f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
+			        var hashedPath = _f.hashedPath.replace(new RegExp('\\' + path.sep, 'g'), '/');
+			        contents = contents.replace(
+			            new RegExp(origPath, 'g'), function (result) {
+			        	return hashedPath;
+			            });
+			    });
+			    // update file's hash as it does in gulp-rev plugin
+			    file.contents = new Buffer(contents);
+			    // Calculate the new one after the replace
+			    file.revHash = md5(contents).slice(0, 10);
+			}
+			// If found, no need to continue the loop.
+			break;
+		    }
+		};
 	    }
 	};
-	    // Fix hashes
-	for (var dependent in dependencyMap) {
-	    replaceStringsFor(dependent);
+	// Fix hashes
+	for (var dependency in dependencyMap) {
+	    replaceStringsFor(dependency);
 	}
 	// Push to outout
         f.forEach(function (_f) {
