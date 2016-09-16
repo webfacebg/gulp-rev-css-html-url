@@ -95,8 +95,6 @@ module.exports = function override() {
 			// First keep the old hash
 			var hash = file.revHash;
 			var ext = path.extname(file.path);
-			var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
-
 			longestFirst.forEach(function (_f) {
                             if (dependencyMap[f[i].origPath] && dependencyMap[f[i].origPath][_f.origPath]) {
 			        var origPath = _f.origPath.replace(new RegExp('\\' + path.sep, 'g'), '/').replace(/\./g, '\\.');
@@ -106,13 +104,13 @@ module.exports = function override() {
                             }
 			});
 
-			file.path = path.join(path.dirname(file.path), filename);
 			// update file's hash as it does in gulp-rev plugin
 			file.contents = new Buffer(contents);
 			// Calculate the new one after the replace
 			file.revHash = md5(contents).slice(0, 10);
 			f[i].hashedPath = f[i].hashedPath.replace(hash, file.revHash); // replace the hash in the rev-manifest.json
-
+			var filename = path.basename(file.revOrigPath, ext) + '-' + file.revHash + ext;
+			file.path = path.join(path.dirname(file.path), filename);
 		    }
 		    // If found, no need to continue the loop.
 		    break;
@@ -127,7 +125,7 @@ module.exports = function override() {
 	// Push to outout
         f.forEach(function (_f) {
             var file = _f.file;
-            self.push(file);
+            self .push(file);
         });
         cb();
     });
